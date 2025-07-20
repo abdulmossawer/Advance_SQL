@@ -22,7 +22,21 @@
    SUBQUERY | RESULT TYPES
 ===============================================================================*/
 
+/* Scalar Query */
+SELECT
+    AVG(Sales)
+FROM Sales.Orders;
 
+/* Row Query */
+SELECT
+    CustomerID
+FROM Sales.Orders;
+
+/* Table Query */
+SELECT
+    OrderID,
+    OrderDate
+FROM Sales.Orders;
 
 /* ==============================================================================
    SUBQUERY | FROM CLAUSE
@@ -32,14 +46,35 @@
    Find the products that have a price higher than the average price of all products.
 */
 
-
-
+-- Main Query
+SELECT
+*
+FROM (
+    -- Sub Query
+    SELECT
+        ProductID,
+        Price,
+        AVG(Price) OVER() AS AvgPrice
+    FROM Sales.Products
+) t
+WHERE Price > AvgPrice;
 
 /* TASK 2:
    Rank Customers based on their total amount of sales.
 */
 
-
+-- Main Query
+SELECT 
+*,
+RANK() OVER(ORDER BY TotalSales DESC) AS CustomerRank
+FROM (
+    -- Sub Query
+    SELECT
+        CustomerID,
+        SUM(Sales) AS TotalSales
+    FROM Sales.Orders
+    GROUP BY CustomerID
+) t
 
 /* ==============================================================================
    SUBQUERY | SELECT
@@ -49,6 +84,13 @@
    Show the product IDs, product names, prices, and the total number of orders.
 */
 
+-- Main Query
+SELECT
+    ProductID,
+    Product,
+    Price,
+    (SELECT COUNT(*) FROM Sales.Orders) AS TotalOrders -- Sub Query
+FROM Sales.Products
 
 
 /* ==============================================================================
@@ -59,15 +101,39 @@
    Show customer details along with their total sales.
 */
 
-
+-- Main Query
+SELECT 
+    c.*,
+    o.TotalSales
+FROM Sales.Customers AS c
+LEFT JOIN (
+    -- Sub Query
+    SELECT
+        CustomerID,
+        SUM(Sales) AS TotalSales
+    FROM Sales.Orders 
+    GROUP BY CustomerID
+) AS o
+    ON c.CustomerID = o.CustomerID;
 
 /* TASK 5:
    Show all customer details and the total orders of each customer.
 */
 
-
-
-
+-- Main Query
+SELECT
+    c.*,
+    O.TotalSales
+FROM Sales.Customers AS c
+LEFT JOIN (
+    -- Sub Query
+    SELECT
+        CustomerID,
+        COUNT(*) AS TotalSales
+    FROM Sales.Orders
+    GROUP BY CustomerID
+) AS o
+    ON C.CustomerID = o.CustomerID
 
 /* ==============================================================================
    SUBQUERY | COMPARISON OPERATORS
@@ -76,8 +142,15 @@
 /* TASK 6:
    Find the products that have a price higher than the average price of all products.
 */
--- Main Query
 
+-- Main Query
+SELECT
+    Product,
+    ProductID,
+    Price,
+    (SELECT AVG(Price) FROM Sales.Products)  AS AvgPrice -- Sub Query
+FROM Sales.Products
+WHERE Price > (SELECT AVG(Price) FROM Sales.Products) -- Sub Query
 
 
 /* ==============================================================================
@@ -87,15 +160,34 @@
 /* TASK 7:
    Show the details of orders made by customers in Germany.
 */
+
 -- Main Query
-
-
+SELECT
+    *
+FROM Sales.Orders
+WHERE CustomerID IN (
+    -- Sub Query
+    SELECT
+        CustomerID
+    FROM Sales.Customers
+    WHERE Country = 'Germany'
+);
 
 /* TASK 8:
    Show the details of orders made by customers not in Germany.
 */
--- Main Query
 
+-- Main Query
+SELECT
+    *
+FROM Sales.Orders
+WHERE CustomerID NOT IN (
+    -- Sub Query
+    SELECT
+        CustomerID
+    FROM Sales.Customers
+    WHERE Country = 'Germany'
+);
 
 
 /* ==============================================================================
@@ -105,8 +197,17 @@
 /* TASK 9:
    Find female employees whose salaries are greater than the salaries of any male employees.
 */
-
-
+SELECT
+    EmployeeID, 
+    FirstName,
+    Salary
+FROM Sales.Employees
+WHERE Gender = 'F'
+  AND Salary > ANY (
+      SELECT Salary
+      FROM Sales.Employees
+      WHERE Gender = 'M'
+  );
 
 /* ==============================================================================
    CORRELATED SUBQUERY
@@ -115,8 +216,12 @@
 /* TASK 10:
    Show all customer details and the total orders for each customer using a correlated subquery.
 */
-
-
+SELECT
+    *,
+    (SELECT COUNT(*)
+     FROM Sales.Orders o
+     WHERE o.CustomerID = c.CustomerID) AS TotalSales
+FROM Sales.Customers AS c;
 
 
 /* ==============================================================================
@@ -126,10 +231,25 @@
 /* TASK 11:
    Show the details of orders made by customers in Germany.
 */
-
-
+SELECT
+    *
+FROM Sales.Orders AS o
+WHERE EXISTS (
+    SELECT 1
+    FROM Sales.Customers AS c
+    WHERE Country = 'Germany'
+      AND o.CustomerID = c.CustomerID
+);
 
 /* TASK 12:
    Show the details of orders made by customers not in Germany.
 */
-
+SELECT
+    *
+FROM Sales.Orders AS o
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM Sales.Customers AS c
+    WHERE Country = 'Germany'
+      AND o.CustomerID = c.CustomerID
+);
